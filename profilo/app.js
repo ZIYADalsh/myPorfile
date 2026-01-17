@@ -325,18 +325,38 @@
     if (e.key === "Escape") closeModal();
   });
 
-  // Contact validation
+  // Contact validation and EmailJS integration
   const form = $("#contactForm");
   const statusEl = $("#formStatus");
+  const submitBtn = form?.querySelector('button[type="submit"]');
+
+  // EmailJS configuration (real keys from emailjs.com)
+  const EMAILJS_PUBLIC_KEY = "b__Vof5DruC75dvNS"; // Public Key
+  const EMAILJS_SERVICE_ID = "service_ia95439"; // Service ID
+  const EMAILJS_TEMPLATE_ID = "template_5o7x25d"; // Template ID
+
   function setStatus(msg, type = "info") {
     if (!statusEl) return;
     statusEl.textContent = msg;
     statusEl.style.color =
       type === "success" ? "var(--green)" : type === "error" ? "var(--amber)" : "var(--muted)";
   }
+
+  function setLoading(loading) {
+    if (!submitBtn) return;
+    submitBtn.disabled = loading;
+    submitBtn.textContent = loading ? "جاري الإرسال..." : "إرسال";
+  }
+
   function validateEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(email).trim());
   }
+
+  // Initialize EmailJS
+  (function() {
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+  })();
+
   form?.addEventListener("submit", (e) => {
     e.preventDefault();
     const fd = new FormData(form);
@@ -348,10 +368,48 @@
     if (!validateEmail(email)) return setStatus("البريد الإلكتروني غير صحيح.", "error");
     if (message.length < 10) return setStatus("الرسالة قصيرة. اكتب تفاصيل أكثر.", "error");
 
-    setStatus("تم تجهيز الرسالة بنجاح ✅ (بدون إرسال فعلي حالياً)", "success");
-    toast("تم تجهيز الرسالة ✅");
-    form.reset();
+    // Check if EmailJS is configured
+    if (EMAILJS_PUBLIC_KEY.includes("XXXX") || EMAILJS_SERVICE_ID.includes("xxxx") || EMAILJS_TEMPLATE_ID.includes("xxxx")) {
+      setStatus("EmailJS غير مُعدّ. يرجى إعداد حساب EmailJS وإدخال المفاتيح الصحيحة في app.js.", "error");
+      toast("يرجى إعداد EmailJS أولاً");
+      return;
+    }
+
+    setLoading(true);
+    setStatus("جاري إرسال الرسالة...", "info");
+
+    // If dummy keys, simulate success for demonstration
+    if (EMAILJS_PUBLIC_KEY === "user_dummy_public_key" || EMAILJS_SERVICE_ID === "service_dummy_id" || EMAILJS_TEMPLATE_ID === "template_dummy_id") {
+      setTimeout(() => {
+        setStatus("تم إرسال الرسالة بنجاح ✅ (محاكاة للعرض)", "success");
+        toast("تم إرسال الرسالة بنجاح ✅");
+        form.reset();
+        setLoading(false);
+      }, 2000); // Simulate delay
+    } else {
+      // Send email using EmailJS
+      emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+        from_name: name,
+        from_email: email,
+        message: message,
+        to_email: "alshawsh161@gmail.com"
+      })
+      .then(() => {
+        setStatus("تم إرسال الرسالة بنجاح ✅", "success");
+        toast("تم إرسال الرسالة بنجاح ✅");
+        form.reset();
+      })
+      .catch((error) => {
+        console.error("EmailJS error:", error);
+        setStatus("فشل في إرسال الرسالة. حاول مرة أخرى.", "error");
+        toast("فشل في الإرسال — حاول مرة أخرى");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+    }
   });
+
   form?.addEventListener("reset", () => setStatus(""));
 
 })();
